@@ -1,0 +1,66 @@
+{
+  "_meta": {
+    "updated_at": "2026-07-02T21:37:22.121Z",
+    "count": 5,
+    "models": [
+      "gemini-flash-latest"
+    ]
+  },
+  "responses": {
+    "urgency_sms": {
+      "input": "FINAL NOTICE: Your Union Bank account shows suspicious activity. Reply STOP within 30 minutes or it will be permanently locked.",
+      "output": {
+        "intent": "suspicious",
+        "urgency_score": 9,
+        "reason": "The message uses high-pressure tactics, a strict 30-minute deadline, and threats of account suspension to force a quick response.",
+        "alert_text_tech": "Phishing attempt detected. High-urgency social engineering threat of account lockout to force SMS interaction. Do not reply.",
+        "alert_text_standard": "This is a scam. Union Bank will never threaten to lock your account in 30 minutes. Do not reply to this message.",
+        "alert_text_elderly": "This message is fake. Do not reply to it. Your bank account is safe. If you are worried, please call the bank directly."
+      }
+    },
+    "fake_prize": {
+      "input": "Congratulations! Your number won ₦2,000,000 in the Union Bank Anniversary Promo. Send your BVN and card PIN to claim your prize now.",
+      "output": {
+        "intent": "suspicious",
+        "urgency_score": 9,
+        "reason": "The message is a phishing scam requesting sensitive credentials (BVN and card PIN) under the guise of a promotional prize.",
+        "alert_text_tech": "Phishing attempt detected: Social engineering via fake promo. Requests BVN and card PIN. Never share credentials.",
+        "alert_text_standard": "This is a scam. Union Bank will never ask for your BVN or card PIN to claim a prize. Do not reply or share your details.",
+        "alert_text_elderly": "This is a trick by thieves to steal your money. Do not send your PIN or BVN. Call the bank directly if you are worried."
+      }
+    },
+    "account_suspension": {
+      "input": "Dear customer, your BVN has been suspended. Re-validate immediately at http://union-bank-secure.link/verify to avoid account closure.",
+      "output": {
+        "intent": "suspicious",
+        "urgency_score": 10,
+        "reason": "The message uses a fake BVN suspension threat and a suspicious lookalike link to steal banking credentials.",
+        "alert_text_tech": "Phishing alert: Fake BVN suspension notice using a spoofed domain (union-bank-secure.link) to harvest credentials. Do not click.",
+        "alert_text_standard": "Warning: This is a scam. Union Bank will never ask you to update your BVN via a link. Do not click the link or share any details.",
+        "alert_text_elderly": "This message is fake. Your bank account is safe. Do not click the link. Do not give anyone your BVN or card details. Call the bank if worried."
+      }
+    },
+    "otp_request": {
+      "input": "This is Union Bank support. We are fixing your account. Please read me the 6-digit code we just sent so we can verify you.",
+      "output": {
+        "intent": "suspicious",
+        "urgency_score": 10,
+        "reason": "The sender is impersonating Union Bank support to steal a 6-digit OTP, which is a classic credential-harvesting scam.",
+        "alert_text_tech": "Suspicious OTP request detected. Union Bank will never ask for your 6-digit verification code over the phone or chat. Do not share it.",
+        "alert_text_standard": "Warning: This is a scam. Union Bank will never ask you to read out a 6-digit code. Do not share any codes with anyone.",
+        "alert_text_elderly": "This is a scam. Do not tell anyone the 6-digit code sent to your phone. Hang up and call the bank directly."
+      }
+    },
+    "delivery_fee": {
+      "input": "Your parcel is held at customs. Pay a ₦3,500 clearance fee to 0812XXInvalidPay or it will be returned. Click bit.ly/clear-parcel.",
+      "output": {
+        "intent": "suspicious",
+        "urgency_score": 8,
+        "reason": "The message uses a fake customs clearance pretext and a shortened link to solicit unauthorized payments.",
+        "alert_text_tech": "Phishing attempt: Fake customs clearance fee request using a shortened bit.ly link to harvest payment details. Do not click or pay.",
+        "alert_text_standard": "This is a scam. Customs or delivery companies will not ask you to pay fees via a random link or phone number. Do not click the link.",
+        "alert_text_elderly": "This message is a trick. Do not click the link and do not send any money. Your bank or parcel is safe. Call Union Bank if you are worried."
+      }
+    }
+  }
+}

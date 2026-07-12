@@ -1,0 +1,37 @@
+{
+  "name": "sentineliq-backend",
+  "version": "1.0.0",
+  "description": "SentinelIQ backend — REST + WebSocket judge feeds",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node --watch index.js",
+    "migrate": "node db/migrate.js",
+    "seed": "node db/seed.js",
+    "test": "node test/trustScore.test.js",
+    "test:fusion": "node test/fusion.test.js",
+    "scan:test": "node test/classifier.test.js",
+    "gen:cache": "node scripts/generateCache.js",
+    "attack": "node scripts/attackerSim.js",
+    "demo:reset": "node scripts/demoReset.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.109.1",
+    "@faker-js/faker": "^10.5.0",
+    "@google/genai": "^2.10.0",
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "jsonwebtoken": "^9.0.3",
+    "pg": "^8.22.0",
+    "socket.io": "^4.8.3",
+    "ws": "^8.21.0"
+  },
+  "devDependencies": {
+    "socket.io-client": "^4.8.3"
+  }
+}
