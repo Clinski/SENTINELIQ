@@ -29,9 +29,10 @@ const { generateOtp, verifyOtp } = require("./lib/otp");
 
 // API action ("hard-step-up") → trust_events.action_taken enum ("hard_step_up").
 const ACTION_TO_ENUM = {
-  allow: "none",
+  proceed: "none",
   "soft-step-up": "soft_step_up",
   "hard-step-up": "hard_step_up",
+  block: "block",
   "breach-alert": "breach_alert",
 };
 
@@ -64,6 +65,16 @@ const pool = process.env.DATABASE_URL
         : { rejectUnauthorized: false },
     })
   : null;
+
+// pg.Pool emits 'error' for problems on an IDLE client (e.g. Neon terminating a
+// background connection). Without a listener, Node treats that as an uncaught
+// exception and kills the whole process — fatal for a live demo. Log and continue;
+// the pool transparently opens a fresh connection on the next query.
+if (pool) {
+  pool.on("error", (err) => {
+    console.error("[db] idle client error (pool recovers automatically):", err.message);
+  });
+}
 
 // ---------------------------------------------------------------------------
 // Socket.IO — created early so middleware (decoy guard) and the risk tracker can

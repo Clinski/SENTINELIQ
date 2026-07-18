@@ -62,7 +62,7 @@ CREATE TABLE IF NOT EXISTS trust_events (
   score        INTEGER NOT NULL CHECK (score BETWEEN 0 AND 100),
   signals_json JSONB NOT NULL DEFAULT '{}'::jsonb,
   action_taken TEXT NOT NULL DEFAULT 'none'
-                 CHECK (action_taken IN ('none', 'soft_step_up', 'hard_step_up', 'breach_alert')),
+                 CHECK (action_taken IN ('none', 'soft_step_up', 'hard_step_up', 'block', 'breach_alert')),
   timestamp    TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
@@ -103,3 +103,9 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS last_seen_at  TIMESTAMPTZ;
 -- Bank name on each account so transaction history reads like a real Nigerian
 -- statement (recipient name · bank · masked account) instead of raw UUIDs.
 ALTER TABLE accounts ADD COLUMN IF NOT EXISTS bank_name TEXT;
+
+-- Added 'block' as a distinct action_taken state (severe trust-score failures are
+-- denied outright, not just step-up-gated).
+ALTER TABLE trust_events DROP CONSTRAINT IF EXISTS trust_events_action_taken_check;
+ALTER TABLE trust_events ADD CONSTRAINT trust_events_action_taken_check
+  CHECK (action_taken IN ('none', 'soft_step_up', 'hard_step_up', 'block', 'breach_alert'));

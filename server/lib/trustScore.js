@@ -158,7 +158,7 @@ function computeTrustScore(ctx, user) {
 // assessTrust — richer wrapper the API returns. Turns the raw rule hits into the
 // agreed contract: { score, action, signals, explanation, deductions }.
 //   signals:     friendly signal names, e.g. ["new_device","unusual_hour"]
-//   action:      "allow" | "soft-step-up" | "hard-step-up"   (hyphenated per API)
+//   action:      "proceed" | "soft-step-up" | "hard-step-up" | "block"  (hyphenated per API)
 //   explanation: one plain-language sentence for the user
 // ---------------------------------------------------------------------------
 
@@ -187,12 +187,13 @@ const SIGNAL_PHRASES = {
 };
 
 function actionForScore(score) {
-  if (score >= 80) return "allow";
+  if (score >= 80) return "proceed";
   if (score >= 40) return "soft-step-up";
-  return "hard-step-up";
+  if (score >= 20) return "hard-step-up";
+  return "block";
 }
 
-function buildExplanation(signals) {
+function buildExplanation(signals, action) {
   if (signals.length === 0) {
     return "This transfer looks normal for your account, so we let it through.";
   }
@@ -201,6 +202,10 @@ function buildExplanation(signals) {
   if (phrases.length === 1) list = phrases[0];
   else if (phrases.length === 2) list = `${phrases[0]} and ${phrases[1]}`;
   else list = `${phrases.slice(0, -1).join(", ")}, and ${phrases[phrases.length - 1]}`;
+
+  if (action === "block") {
+    return `We stopped this transfer because it's coming from ${list} — too many red flags to proceed safely. Contact your bank if this was really you.`;
+  }
   return `We noticed this transfer is coming from ${list}. For your safety we've asked for extra verification before it can continue.`;
 }
 
@@ -208,7 +213,7 @@ function assessTrust(ctx, user) {
   const { score, deductions } = computeTrustScore(ctx, user);
   const signals = deductions.map((d) => SIGNAL_NAMES[d.rule] || d.rule);
   const action = actionForScore(score);
-  return { score, action, signals, explanation: buildExplanation(signals), deductions };
+  return { score, action, signals, explanation: buildExplanation(signals, action), deductions };
 }
 
 module.exports = {

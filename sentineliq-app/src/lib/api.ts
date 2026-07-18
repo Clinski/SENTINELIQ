@@ -61,7 +61,7 @@ export async function getRecentTransactions(token: string): Promise<RecentTransa
 }
 
 // ---- Trust scoring (Send Money) ---------------------------------------
-export type TrustAction = "allow" | "soft-step-up" | "hard-step-up";
+export type TrustAction = "proceed" | "soft-step-up" | "hard-step-up" | "block";
 
 export interface TrustScoreResult {
   score: number;

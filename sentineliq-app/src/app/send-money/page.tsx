@@ -61,6 +61,7 @@ export default function SendMoneyPage() {
   const [signals, setSignals] = useState<string[]>([]);
   const [otpMessage, setOtpMessage] = useState<string>("");
   const [status, setStatus] = useState<string | null>(null);
+  const [blocked, setBlocked] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -78,6 +79,7 @@ export default function SendMoneyPage() {
     if (!token) return;
     setError(null);
     setStatus(null);
+    setBlocked(null);
     setLoading(true);
     try {
       // Ask Builder B's trust engine to score this transfer.
@@ -91,14 +93,26 @@ export default function SendMoneyPage() {
       setSignals(result.signals || []);
 
       // Honor the backend's action decision directly (falls back to score bands).
-      // allow → silent · soft-step-up → Soft overlay · hard-step-up → Hard overlay.
+      // proceed → silent · soft-step-up → Soft overlay · hard-step-up → Hard overlay
+      // (OTP) · block → denied outright, no step-up offered.
       // (A decoy recipient additionally trips the global breach alert via socket.)
-      const action = result.action ?? (result.score >= 80 ? "allow" : result.score >= 40 ? "soft-step-up" : "hard-step-up");
-      if (action === "allow") {
+      const action =
+        result.action ??
+        (result.score >= 80
+          ? "proceed"
+          : result.score >= 40
+            ? "soft-step-up"
+            : result.score >= 20
+              ? "hard-step-up"
+              : "block");
+      if (action === "proceed") {
         setOverlay(null);
         setStatus(`Transfer sent · trust score ${result.score}/100`);
       } else if (action === "soft-step-up") {
         setOverlay("soft");
+      } else if (action === "block") {
+        setOverlay(null);
+        setBlocked(result.explanation || `Transfer blocked · trust score ${result.score}/100`);
       } else {
         // Hard step-up → issue an action-bound OTP describing THIS transfer.
         try {
@@ -218,6 +232,11 @@ export default function SendMoneyPage() {
         {status && (
           <p className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-700">
             {status}
+          </p>
+        )}
+        {blocked && (
+          <p className="rounded-lg border border-red-300 bg-red-50 p-3 text-sm font-medium text-red-700">
+            🚫 {blocked}
           </p>
         )}
         {error && (
