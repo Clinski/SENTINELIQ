@@ -29,11 +29,11 @@ export const ALERT_TEXTS: Record<AlertType, Record<Variant, string>> = {
 
   // (2) Trust score soft step-up
   soft_step_up: {
-    tech: "Step-up auth required — anomalous signals on this session. Confirm with biometrics to proceed.",
+    tech: "Step-up auth required — anomalous signals on this session. We've texted a one-time code to your phone; enter it to proceed.",
     standard:
-      "Quick check — please confirm it's you with your fingerprint or face to continue this action.",
+      "Quick check — we sent a text with a code to your phone. Enter it below to continue this transfer.",
     elderly:
-      "For your safety, please confirm it is really you. Use your fingerprint or face. This is normal and only takes a moment.",
+      "For your safety, we sent a code by text message to your phone. Please type that code below. This is normal and only takes a moment.",
   },
 
   // (3) Trust score hard step-up

@@ -94,12 +94,12 @@ export default function SendMoneyPage() {
       setSignals(result.signals || []);
 
       // Honor the backend's action decision directly (falls back to score bands).
-      // proceed → silent · soft-step-up → Soft overlay (biometric) · hard-step-up →
-      // Hard overlay (facial verification, higher friction) · block → a
-      // last-resort liveness check (move your head, open your mouth) instead of a
-      // dead end; only denied outright if the user cancels that. The hard
-      // step-up + the liveness check both confirm via facial verification,
-      // matched on-device against the account holder — never an OTP over SMS.
+      // proceed → silent · soft-step-up → Soft overlay (action-bound OTP, texted
+      // to the user's simulated SMS inbox) · hard-step-up → Hard overlay (facial
+      // verification, higher friction, on-device) · block → a last-resort
+      // liveness check (move your head, open your mouth) instead of a dead end;
+      // only denied outright if the user cancels that. Three distinct tiers: OTP
+      // for medium risk, facial verification for high risk / last-resort block.
       // (A decoy recipient additionally trips the global breach alert via socket.)
       const action =
         result.action ??
@@ -132,6 +132,13 @@ export default function SendMoneyPage() {
   function completeAfterStepUp() {
     setOverlay(null);
     setStatus(`Transfer approved after verification · trust score ${score}/100`);
+  }
+
+  // User backed out of the OTP step-up — unlike facial verification's on-device
+  // check, this is a real cancel (it must NOT silently approve the transfer).
+  function cancelSoftStepUp() {
+    setOverlay(null);
+    setBlocked(explanation || `Transfer cancelled · trust score ${score}/100`);
   }
 
   // Liveness check passed — this was the last-resort path for an otherwise
@@ -260,7 +267,11 @@ export default function SendMoneyPage() {
 
       <SoftStepUp
         open={overlay === "soft"}
-        onClose={completeAfterStepUp}
+        onClose={cancelSoftStepUp}
+        onVerified={completeAfterStepUp}
+        token={token ?? ""}
+        amount={Number(amount) || 0}
+        recipient={recipient}
         level={effectiveLevel}
       />
       <HardStepUp

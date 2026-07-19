@@ -26,6 +26,7 @@ const { seedDatabase } = require("./db/seed");
 const { scheduleDecoyRotation } = require("./lib/decoyRotation");
 const { fallbackClassify } = require("./lib/nlpFallback");
 const { generateOtp, verifyOtp } = require("./lib/otp");
+const { deliver: deliverSms, inbox: smsInbox } = require("./lib/smsInbox");
 
 // API action ("hard-step-up") → trust_events.action_taken enum ("hard_step_up").
 const ACTION_TO_ENUM = {
@@ -196,20 +197,28 @@ app.post("/api/auth/login", async (req, res) => {
   return res.status(401).json({ error: "Invalid credentials" });
 });
 
-// POST /api/otp/send — issue an action-bound OTP for the caller. The `message` is
-// personalised to the action ("OTP - 654231 to authorize your transfer of ₦X to Y").
-// NOTE: `code` is returned here for the DEMO only (no real SMS gateway). In
-// production the code is delivered by SMS and never appears in the API response.
+// POST /api/otp/send — issue an action-bound OTP for the caller and "deliver" it
+// to their simulated SMS inbox (see smsInbox.js). The code itself never appears
+// in this response — same as a real deployment, where it would only reach the
+// user via SMS. The frontend must read it back from GET /api/otp/inbox.
 app.post("/api/otp/send", requireAuth, (req, res) => {
   const { purpose = "transfer", amount, recipient } = req.body ?? {};
   const rec = generateOtp(req.auth.sub, purpose, { amount, recipient });
-  res.json({ message: rec.message, purpose: rec.purpose, expires_in: 300, code: rec.code });
+  deliverSms(req.auth.sub, rec.message);
+  res.json({ message: rec.message, purpose: rec.purpose, expires_in: 300 });
 });
 
 // POST /api/otp/verify — check the caller's OTP (single-use, action-bound).
 app.post("/api/otp/verify", requireAuth, (req, res) => {
   const result = verifyOtp(req.auth.sub, (req.body ?? {}).code);
   res.status(result.ok ? 200 : 400).json(result);
+});
+
+// GET /api/otp/inbox — the caller's simulated SMS inbox (OTP deliveries only).
+// Backs the Messages screen so a step-up OTP shows up exactly where a real text
+// would land, instead of leaking through the /otp/send response.
+app.get("/api/otp/inbox", requireAuth, (req, res) => {
+  res.json(smsInbox(req.auth.sub));
 });
 
 // GET /api/account/balance — authed; returns the caller's account balance.

@@ -91,12 +91,11 @@ export async function scoreTransfer(
   return res.json();
 }
 
-// ---- Action-bound OTP (Hard Step-Up) ----------------------------------
+// ---- Action-bound OTP (Soft Step-Up) -----------------------------------
 export interface OtpChallenge {
   message: string; // "OTP - 654231 to authorize your transfer of ₦X to Y…"
   purpose: string;
   expires_in: number;
-  code?: string; // demo only — omitted in production
 }
 
 export async function sendOtp(
@@ -122,6 +121,19 @@ export async function verifyOtp(
     body: JSON.stringify({ code }),
   });
   return res.json();
+}
+
+// The caller's simulated SMS inbox — where a sent OTP actually lands (see
+// server/lib/smsInbox.js). Backs the Messages screen.
+export interface SmsMessage {
+  id: string;
+  sender: string;
+  body: string;
+  timestamp: string;
+}
+
+export async function getOtpInbox(token: string): Promise<SmsMessage[]> {
+  return authedGet<SmsMessage[]>("/api/otp/inbox", token);
 }
 
 // ---- NLP message scan (Messages) --------------------------------------

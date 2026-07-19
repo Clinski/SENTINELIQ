@@ -3,7 +3,8 @@
 import { useState } from "react";
 import { useAuth } from "@/lib/AuthContext";
 import { scanMessage, type ScanResult } from "@/lib/api";
-import { MESSAGES, type Message } from "@/lib/placeholderData";
+import { type Message } from "@/lib/placeholderData";
+import { useInbox } from "@/lib/useInbox";
 import ScamAlert from "@/components/overlays/ScamAlert";
 
 interface Scanned {
@@ -12,7 +13,10 @@ interface Scanned {
 
 export default function MessagesPage() {
   const { token, effectiveLevel } = useAuth();
-  const [inbox] = useState<Message[]>(MESSAGES);
+  // Static demo messages + any OTP SentinelIQ has "texted" this user (e.g. from
+  // a Soft Step-Up during a transfer) — shared with the in-flow Messages drawer
+  // so an OTP reads identically wherever it's checked from.
+  const inbox = useInbox(token);
   const [scans, setScans] = useState<Record<string, Scanned>>({});
   const [scanning, setScanning] = useState<string | null>(null);
   const [alert, setAlert] = useState<{ result: ScanResult; sender: string } | null>(null);
