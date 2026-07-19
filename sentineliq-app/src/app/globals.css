@@ -3,28 +3,58 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
-  /* Union Bank brand colour tokens */
-  --ub-blue: #009fe3;
-  --ub-blue-deep: #0088c6;
-  --ub-gray: #e7edf1;
-  --ub-key: #f7fbfd;
+
+  /* Union360 brand colour tokens (from the SentinelIQ redesign reference) */
+  --u360-blue: #42b4e6;
+  --u360-navy: #0b2a45;
+  --u360-muted: #5a6b78;
+  --u360-muted-2: #8a9bab;
+  --u360-page-bg: #f4f7f9;
+  --u360-border: #edf3f6;
+  --u360-border-2: #e4eef3;
+  --u360-green: #2e9c5a;
+  --u360-scam: #a63333;
+  --u360-breach: #5c1414;
+  --u360-breach-deep: #8c1f1f;
+  --u360-risk-bg: #f6d9c8;
+  --u360-risk-text: #c1592e;
+  --u360-admin-accent: #8fd3ed;
+  --u360-admin-muted: #8fa9be;
 }
 
 /* Brand utilities (variant-aware in Tailwind v4, so hover: etc. work). */
-@utility bg-ubblue {
-  background-color: var(--ub-blue);
+@utility bg-u360-blue {
+  background-color: var(--u360-blue);
 }
-@utility bg-ubblue-deep {
-  background-color: var(--ub-blue-deep);
+@utility text-u360-blue {
+  color: var(--u360-blue);
 }
-@utility text-ubblue {
-  color: var(--ub-blue);
+@utility bg-u360-navy {
+  background-color: var(--u360-navy);
 }
-@utility bg-ubgray {
-  background-color: var(--ub-gray);
+@utility text-u360-navy {
+  color: var(--u360-navy);
 }
-@utility bg-ubkey {
-  background-color: var(--ub-key);
+@utility text-u360-muted {
+  color: var(--u360-muted);
+}
+@utility text-u360-muted-2 {
+  color: var(--u360-muted-2);
+}
+@utility bg-u360-page {
+  background-color: var(--u360-page-bg);
+}
+@utility border-u360 {
+  border-color: var(--u360-border);
+}
+@utility bg-u360-scam {
+  background-color: var(--u360-scam);
+}
+@utility bg-u360-breach {
+  background-color: var(--u360-breach);
+}
+@utility text-u360-green {
+  color: var(--u360-green);
 }
 
 @theme inline {
@@ -32,11 +62,12 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --font-heading: var(--font-manrope);
 }
 
 /* Background/text are controlled by Tailwind classes on <body> (bg-slate-50,
-   text-slate-900). We intentionally do NOT follow the OS dark theme — the Union
-   Bank interface is always light. Only the font fallback lives here. */
+   text-slate-900). We intentionally do NOT follow the OS dark theme — the Union360
+   interface is always light. Only the font fallback lives here. */
 body {
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
 }

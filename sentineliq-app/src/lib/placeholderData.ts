@@ -41,7 +41,7 @@ export const TRANSACTIONS: Transaction[] = [
 export const MESSAGES: Message[] = [
   {
     id: "m1",
-    sender: "Union Bank",
+    sender: "Union360",
     body: "Your OTP is 483920. Do not share it with anyone, including bank staff.",
     timestamp: "2026-07-02 09:14",
     kind: "legit",
@@ -63,16 +63,21 @@ export const MESSAGES: Message[] = [
   {
     id: "m4",
     sender: "REWARDS",
-    body: "Congratulations! You've WON ₦2,000,000 in the Union Bank promo. Send your BVN and card PIN to claim now.",
+    body: "Congratulations! You've WON ₦2,000,000 in the Union360 promo. Send your BVN and card PIN to claim now.",
     timestamp: "2026-07-01 14:05",
     kind: "scam",
   },
 ];
 
-export function formatCurrency(amount: number, currency = "NGN"): string {
+export function formatCurrency(
+  amount: number,
+  currency = "NGN",
+  fractionDigits = 2,
+): string {
   return new Intl.NumberFormat("en-NG", {
     style: "currency",
     currency,
-    maximumFractionDigits: 2,
+    minimumFractionDigits: fractionDigits,
+    maximumFractionDigits: fractionDigits,
   }).format(amount);
 }

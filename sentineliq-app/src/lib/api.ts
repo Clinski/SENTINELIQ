@@ -50,6 +50,8 @@ export interface RecentTransaction {
   recipient_bank?: string | null;
   /** Last 4 digits of the recipient's account number. */
   recipient_account_last4?: string | null;
+  /** Merchant/bill label for transactions with no recipient (e.g. "DSTV Subscription"). */
+  description?: string | null;
 }
 
 export async function getBalance(token: string): Promise<Balance> {

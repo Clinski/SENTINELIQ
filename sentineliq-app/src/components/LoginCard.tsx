@@ -1,11 +1,11 @@
 "use client";
 
-// Union Bank Online login card. Restyled to match the bank, but still wired to the
-// real SentinelIQ auth (signIn). The "Username" field carries the demo email.
-import { useRef, useState } from "react";
+// Union360 login card — matches the SentinelIQ redesign reference: a white
+// rounded card with underline-style fields sitting over the gradient hero,
+// wired to the real SentinelIQ auth (signIn).
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/AuthContext";
-import VirtualKeyboard from "@/components/VirtualKeyboard";
 
 const DEMO_EMAIL = "adaeze@unionbank.ng";
 const DEMO_PASSWORD = "demo1234";
@@ -15,22 +15,8 @@ export default function LoginCard() {
   const { signIn } = useAuth();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
-  const [active, setActive] = useState<"username" | "password">("username");
-  const [hideKeyboard, setHideKeyboard] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const setters = useRef({ username: setUsername, password: setPassword });
-
-  function typeChar(char: string) {
-    setters.current[active]((v) => v + char);
-  }
-  function backspace() {
-    setters.current[active]((v) => v.slice(0, -1));
-  }
-  function cancel() {
-    setUsername("");
-    setPassword("");
-  }
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
@@ -47,12 +33,10 @@ export default function LoginCard() {
   }
 
   return (
-    <div className="w-full max-w-lg rounded-lg bg-ubblue p-6 text-white shadow-lg sm:p-8">
-      <h1 className="text-right text-3xl font-light">Login</h1>
-
-      <form onSubmit={handleLogin} className="mt-5 space-y-4">
-        <div className="flex items-center gap-4">
-          <label htmlFor="username" className="w-24 shrink-0 text-base">
+    <div className="w-full max-w-sm rounded-[20px] bg-white p-5 shadow-[0_12px_30px_rgba(11,42,69,0.12)]">
+      <form onSubmit={handleLogin} className="space-y-3.5">
+        <div>
+          <label htmlFor="username" className="block text-[11.5px] text-u360-muted-2">
             Username
           </label>
           <input
@@ -60,14 +44,13 @@ export default function LoginCard() {
             type="text"
             autoComplete="username"
             value={username}
-            onFocus={() => setActive("username")}
             onChange={(e) => setUsername(e.target.value)}
-            className="h-10 flex-1 rounded bg-white px-3 text-slate-900 outline-none"
+            className="mt-1.5 w-full border-b border-u360-border-2 pb-2.5 text-sm text-u360-navy outline-none focus:border-u360-blue"
           />
         </div>
 
-        <div className="flex items-center gap-4">
-          <label htmlFor="password" className="w-24 shrink-0 text-base">
+        <div>
+          <label htmlFor="password" className="block text-[11.5px] text-u360-muted-2">
             Password
           </label>
           <input
@@ -75,45 +58,22 @@ export default function LoginCard() {
             type="password"
             autoComplete="current-password"
             value={password}
-            onFocus={() => setActive("password")}
             onChange={(e) => setPassword(e.target.value)}
-            className="h-10 flex-1 rounded bg-ubgray px-3 text-slate-900 outline-none"
+            className="mt-1.5 w-full border-b border-u360-border-2 pb-2.5 text-sm text-u360-navy outline-none focus:border-u360-blue"
           />
         </div>
-
-        {!hideKeyboard && (
-          <VirtualKeyboard onInput={typeChar} onBackspace={backspace} onCancel={cancel} />
-        )}
-
-        <label className="flex items-center justify-end gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={hideKeyboard}
-            onChange={(e) => setHideKeyboard(e.target.checked)}
-            className="h-4 w-4 accent-white"
-          />
-          Hide Virtual Keyboard(Not Recommended)
-        </label>
 
         {error && (
-          <p className="rounded bg-white/15 px-3 py-2 text-sm text-white">{error}</p>
+          <p className="rounded-lg bg-red-50 px-3 py-2 text-xs text-red-600">{error}</p>
         )}
 
-        <div className="flex items-center justify-between pt-1">
-          <button
-            type="button"
-            className="rounded-full bg-slate-400 px-5 py-2 text-sm font-medium text-white transition-colors hover:bg-slate-500"
-          >
-            Forgot Password
-          </button>
-          <button
-            type="submit"
-            disabled={loading}
-            className="rounded-full bg-white px-8 py-2 text-sm font-semibold text-ubblue transition-colors hover:bg-ubgray disabled:opacity-60"
-          >
-            {loading ? "…" : "Login"}
-          </button>
-        </div>
+        <button
+          type="submit"
+          disabled={loading}
+          className="w-full rounded-[26px] bg-u360-blue py-[15px] font-heading text-[15px] font-bold text-white transition-opacity hover:opacity-90 disabled:opacity-60"
+        >
+          {loading ? "Signing in…" : "Log In"}
+        </button>
 
         <button
           type="button"
@@ -121,7 +81,7 @@ export default function LoginCard() {
             setUsername(DEMO_EMAIL);
             setPassword(DEMO_PASSWORD);
           }}
-          className="block w-full text-center text-xs text-white/80 underline-offset-2 hover:underline"
+          className="block w-full text-center text-xs text-u360-muted underline-offset-2 hover:underline"
         >
           Use demo account
         </button>

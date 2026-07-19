@@ -1,9 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/lib/AuthContext";
-import { scoreTransfer, sendOtp, verifyOtp } from "@/lib/api";
+import { scoreTransfer } from "@/lib/api";
 import SoftStepUp from "@/components/overlays/SoftStepUp";
 import HardStepUp from "@/components/overlays/HardStepUp";
 
@@ -59,7 +60,6 @@ export default function SendMoneyPage() {
   const [score, setScore] = useState<number | null>(null);
   const [explanation, setExplanation] = useState<string>("");
   const [signals, setSignals] = useState<string[]>([]);
-  const [otpMessage, setOtpMessage] = useState<string>("");
   const [status, setStatus] = useState<string | null>(null);
   const [blocked, setBlocked] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -69,8 +69,7 @@ export default function SendMoneyPage() {
     if (ready && !token) router.replace("/login");
   }, [ready, token, router]);
 
-  // Combined recipient reference used for scoring + the action-bound OTP text,
-  // e.g. "Access Bank · 0123456789".
+  // Combined recipient reference used for scoring, e.g. "Access Bank · 0123456789".
   const recipient = accountNumber ? `${bank} · ${accountNumber}` : "";
   const accountValid = /^\d{10}$/.test(accountNumber);
 
@@ -93,9 +92,11 @@ export default function SendMoneyPage() {
       setSignals(result.signals || []);
 
       // Honor the backend's action decision directly (falls back to score bands).
-      // proceed → silent · soft-step-up → Soft overlay · hard-step-up → Hard overlay
-      // (OTP) · block → denied outright, no step-up offered.
-      // (A decoy recipient additionally trips the global breach alert via socket.)
+      // proceed → silent · soft-step-up → Soft overlay (biometric) · hard-step-up →
+      // Hard overlay (biometric, higher friction) · block → denied outright, no
+      // step-up offered. Both step-ups confirm via Face ID/fingerprint, verified
+      // on-device — never an OTP over SMS. (A decoy recipient additionally trips
+      // the global breach alert via socket.)
       const action =
         result.action ??
         (result.score >= 80
@@ -114,17 +115,6 @@ export default function SendMoneyPage() {
         setOverlay(null);
         setBlocked(result.explanation || `Transfer blocked · trust score ${result.score}/100`);
       } else {
-        // Hard step-up → issue an action-bound OTP describing THIS transfer.
-        try {
-          const otp = await sendOtp(token, {
-            purpose: "transfer",
-            amount: Number(amount) || 0,
-            recipient: recipient || undefined,
-          });
-          setOtpMessage(otp.message);
-        } catch {
-          setOtpMessage("");
-        }
         setOverlay("hard");
       }
     } catch (err) {
@@ -142,7 +132,12 @@ export default function SendMoneyPage() {
 
   return (
     <main className="mx-auto max-w-md px-4 py-10">
-      <h1 className="text-2xl font-bold text-slate-900">Send Money</h1>
+      <div className="flex items-center gap-3.5">
+        <Link href="/transfer" aria-label="Back" className="text-xl text-u360-navy">
+          ‹
+        </Link>
+        <h1 className="font-heading text-base font-bold text-u360-navy">Single Transfer</h1>
+      </div>
 
       <form
         onSubmit={handleConfirm}
@@ -156,7 +151,7 @@ export default function SendMoneyPage() {
             id="bank"
             value={bank}
             onChange={(e) => setBank(e.target.value)}
-            className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-slate-900 outline-none focus:border-ubblue"
+            className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-slate-900 outline-none focus:border-u360-blue"
           >
             {NG_BANKS.map((b) => (
               <option key={b} value={b}>
@@ -177,7 +172,7 @@ export default function SendMoneyPage() {
             value={accountNumber}
             onChange={(e) => setAccountNumber(e.target.value.replace(/\D/g, ""))}
             placeholder="10-digit account number"
-            className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 tracking-wide text-slate-900 outline-none focus:border-ubblue"
+            className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 tracking-wide text-slate-900 outline-none focus:border-u360-blue"
           />
           {accountNumber.length > 0 && !accountValid && (
             <p className="mt-1 text-xs text-amber-600">Account number must be exactly 10 digits.</p>
@@ -194,7 +189,7 @@ export default function SendMoneyPage() {
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
             placeholder="0.00"
-            className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-slate-900 outline-none focus:border-ubblue"
+            className="mt-1 w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-slate-900 outline-none focus:border-u360-blue"
           />
         </div>
 
@@ -210,7 +205,7 @@ export default function SendMoneyPage() {
                 title={s.hint}
                 className={`rounded-lg border px-3 py-2 text-left text-xs transition-colors ${
                   scenario === s.id
-                    ? "border-ubblue bg-ubblue/10 text-ubblue"
+                    ? "border-u360-blue bg-u360-blue/10 text-u360-blue"
                     : "border-slate-200 text-slate-600 hover:bg-slate-50"
                 }`}
               >
@@ -224,7 +219,7 @@ export default function SendMoneyPage() {
         <button
           type="submit"
           disabled={loading || !accountValid}
-          className="w-full rounded-lg bg-ubblue px-4 py-2.5 font-medium text-white transition-colors hover:bg-ubblue-deep disabled:cursor-not-allowed disabled:opacity-60"
+          className="w-full rounded-lg bg-u360-blue px-4 py-2.5 font-medium text-white transition-colors hover:bg-u360-blue disabled:cursor-not-allowed disabled:opacity-60"
         >
           {loading ? "Checking…" : "Confirm Transfer"}
         </button>
@@ -255,8 +250,6 @@ export default function SendMoneyPage() {
         open={overlay === "hard"}
         onClose={() => setOverlay(null)}
         onVerified={completeAfterStepUp}
-        onVerify={(codeInput) => verifyOtp(token!, codeInput)}
-        otpMessage={otpMessage}
         explanation={explanation}
         signals={signals}
         level={effectiveLevel}

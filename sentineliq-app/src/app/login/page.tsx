@@ -1,29 +1,32 @@
-// Union Bank Online login page — restyled to match the bank's real login screen.
-import UnionBankHeader from "@/components/UnionBankHeader";
-import UnionBankFooter from "@/components/UnionBankFooter";
+// Union360 login — matches the SentinelIQ redesign reference: gradient hero
+// with the wordmark and welcome copy, login card floating near the bottom.
 import LoginCard from "@/components/LoginCard";
-import UssdPromo from "@/components/UssdPromo";
 
 export default function LoginPage() {
   return (
-    <div className="flex min-h-screen flex-col bg-white">
-      <UnionBankHeader />
+    <div
+      className="flex min-h-screen flex-col"
+      style={{
+        background: "linear-gradient(180deg, #42B4E6 0%, #8FD3ED 40%, #FFFFFF 78%)",
+      }}
+    >
+      <div className="px-6 pt-14">
+        <span className="font-heading text-xl font-extrabold text-u360-navy">
+          Union<span className="text-white">360</span>
+        </span>
+      </div>
 
-      <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-2 sm:px-6">
-        {/* Two columns on desktop: *826# promo on the left, login card on the right
-            (mirroring the real Union Bank Online page). Stacks on mobile with the
-            login first. */}
-        <div className="flex flex-col items-center gap-8 lg:flex-row lg:items-start lg:justify-between">
-          <div className="order-2 w-full max-w-xl lg:order-1">
-            <UssdPromo />
-          </div>
-          <div className="order-1 flex w-full justify-center lg:order-2 lg:w-auto lg:justify-end">
-            <LoginCard />
-          </div>
-        </div>
-      </main>
+      <div className="px-6 pt-5">
+        <h1 className="font-heading max-w-md text-2xl font-extrabold leading-tight text-u360-navy">
+          Welcome back.
+          <br />
+          Let&apos;s get you signed in.
+        </h1>
+      </div>
 
-      <UnionBankFooter />
+      <div className="flex flex-1 flex-col items-center justify-end px-6 pb-16 pt-10">
+        <LoginCard />
+      </div>
     </div>
   );
 }

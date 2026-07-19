@@ -1,8 +1,8 @@
 "use client";
 
-// Scam-message alert: fires when Builder C's NLP scanner classifies an incoming
-// message as "suspicious". Shows the plain-language reason from the API so the
-// user understands *why* it's dangerous. Not full-screen — it sits over the inbox.
+// Scam-message alert — matches the SentinelIQ redesign reference: a red banner
+// that drops over whatever screen is open, with the SentinelIQ shield badge,
+// plain-language reason, and Dismiss / Report actions.
 import type { ScanResult } from "@/lib/api";
 import { alertText, variantForLiteracy } from "@/lib/alertText";
 
@@ -29,45 +29,53 @@ export default function ScamAlert({ open, result, sender, level, onClose }: Scam
   const body = nlpText || alertText("phishing", level) || result.reason;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm">
-      <div className="w-full max-w-md rounded-2xl border border-red-500/50 bg-slate-900 p-6 shadow-xl">
-        <div className="flex items-center gap-3">
-          <span className="text-2xl" aria-hidden>
-            🚨
-          </span>
-          <div>
-            <h2 className="text-lg font-semibold text-white">Suspicious message blocked</h2>
-            {sender && <p className="text-xs text-slate-400">From {sender}</p>}
+    <div className="fixed inset-0 z-50">
+      <div className="absolute inset-0 bg-u360-navy/20" onClick={onClose} />
+      <div
+        className="absolute inset-x-0 top-0 px-5 pb-[18px] pt-6 shadow-[0_10px_24px_rgba(166,51,51,0.3)]"
+        style={{ background: "#A63333" }}
+      >
+        <div className="mx-auto flex max-w-md flex-col">
+          <div className="mb-2.5 flex items-center gap-2">
+            <span className="flex h-[22px] w-[22px] items-center justify-center rounded-md bg-white text-xs" style={{ color: "#A63333" }}>
+              🛡
+            </span>
+            <span className="font-heading text-[11.5px] font-extrabold tracking-wide text-white">
+              SentinelIQ
+            </span>
+            <span className="ml-auto rounded-full bg-white/15 px-2 py-1 text-xs font-medium text-white/90">
+              Urgency {result.urgency_score}/10
+            </span>
           </div>
-          <span className="ml-auto rounded-full bg-red-500/15 px-2 py-1 text-xs font-medium text-red-300">
-            Urgency {result.urgency_score}/10
-          </span>
-        </div>
 
-        {/* Demographic alert copy — NLP per-message variant for this user's level. */}
-        <p className="mt-4 rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-200">
-          {body}
-        </p>
+          <div className="font-heading mb-2 text-base font-extrabold text-white">Scam Alert</div>
 
-        {result.reason && result.reason !== result.alert_text_standard && (
-          <p className="mt-2 text-xs text-slate-500">Why we flagged it: {result.reason}</p>
-        )}
+          <p className="mb-3.5 text-[12.5px] leading-relaxed text-white/95">
+            {body}
+            {sender && <span className="block text-white/70">From {sender}</span>}
+          </p>
 
-        <div className="mt-6 flex flex-col gap-2">
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-lg bg-cyan-500 px-4 py-2.5 text-sm font-medium text-slate-950 transition-colors hover:bg-cyan-400"
-          >
-            Got it — delete message
-          </button>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-lg px-4 py-2 text-sm text-slate-400 transition-colors hover:text-white"
-          >
-            Dismiss
-          </button>
+          {result.reason && result.reason !== result.alert_text_standard && (
+            <p className="mb-3.5 text-xs text-white/70">Why we flagged it: {result.reason}</p>
+          )}
+
+          <div className="flex gap-2.5">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 rounded-[20px] border border-white/50 py-2.5 text-[12.5px] font-bold text-white transition-colors hover:bg-white/10"
+            >
+              Dismiss
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 rounded-[20px] bg-white py-2.5 text-[12.5px] font-bold transition-colors hover:bg-white/90"
+              style={{ color: "#A63333" }}
+            >
+              Report This Message
+            </button>
+          </div>
         </div>
       </div>
     </div>

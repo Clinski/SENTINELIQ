@@ -17,19 +17,27 @@ const LANG_OPTIONS: { value: string; label: string }[] = [
 // Each panel keeps a rolling log of the latest events streamed from Builder B.
 interface FeedItem {
   id: number;
-  text: string;
-  tone: "ok" | "warn" | "bad";
+  primary: string;
+  secondary: string;
+  tone: "ok" | "warn" | "bad" | "critical";
   ts: number;
 }
 
 const MAX_ROWS = 8;
+
+// Union360/SentinelIQ admin severity palette (from the redesign reference).
+const TONE_STYLES: Record<FeedItem["tone"], { bg: string; text: string; label: string }> = {
+  critical: { bg: "rgba(166,51,51,0.18)", text: "#E8605F", label: "Critical" },
+  bad: { bg: "rgba(193,89,46,0.15)", text: "#E27A46", label: "High" },
+  warn: { bg: "rgba(201,138,46,0.15)", text: "#E0A94B", label: "Medium" },
+  ok: { bg: "rgba(46,156,90,0.15)", text: "#3DE58C", label: "Low" },
+};
 
 export default function AdminPage() {
   const [connected, setConnected] = useState(false);
   const [trustFeed, setTrustFeed] = useState<FeedItem[]>([]);
   const [scanFeed, setScanFeed] = useState<FeedItem[]>([]);
   const [decoyFeed, setDecoyFeed] = useState<FeedItem[]>([]);
-  const [risk, setRisk] = useState<{ level: string; reasons: string[] } | null>(null);
   const [fieldMap, setFieldMap] = useState<FieldMap | null>(null);
   const [mapError, setMapError] = useState<string | null>(null);
   const [trippedTypes, setTrippedTypes] = useState<Set<string>>(new Set());
@@ -59,7 +67,6 @@ export default function AdminPage() {
       setScanFeed([]);
       setDecoyFeed([]);
       setTrippedTypes(new Set());
-      setRisk({ level: "low", reasons: [] });
       if (token) getFieldMap(token).then(setFieldMap).catch(() => {});
     };
     socket.on("demo-reset", onReset);
@@ -72,11 +79,15 @@ export default function AdminPage() {
     const socket = getSocket();
     const push = (
       setter: React.Dispatch<React.SetStateAction<FeedItem[]>>,
-      text: string,
+      primary: string,
+      secondary: string,
       tone: FeedItem["tone"],
     ) =>
       setter((rows) =>
-        [{ id: ++idRef.current, text, tone, ts: Date.now() }, ...rows].slice(0, MAX_ROWS),
+        [{ id: ++idRef.current, primary, secondary, tone, ts: Date.now() }, ...rows].slice(
+          0,
+          MAX_ROWS,
+        ),
       );
 
     setConnected(socket.connected);
@@ -89,10 +100,11 @@ export default function AdminPage() {
     const offTrust = onEvent(socket, EVENTS.trustScore, (p) => {
       const d = (p ?? {}) as { user?: string; score?: number; signals?: string[] };
       const score = d.score ?? 0;
-      const sig = d.signals?.length ? ` [${d.signals.join(", ")}]` : "";
+      const sig = d.signals?.length ? d.signals.join(", ") : "no anomalies";
       push(
         setTrustFeed,
-        `${d.user ?? "user"} → trust ${score}/100${sig}`,
+        `${d.user ?? "user"} · trust ${score}/100`,
+        sig,
         score >= 80 ? "ok" : score >= 40 ? "warn" : "bad",
       );
     });
@@ -104,7 +116,8 @@ export default function AdminPage() {
       const bad = verdict === "scam" || verdict === "suspicious";
       push(
         setScanFeed,
-        `${d.messageId ?? "msg"} → ${bad ? "SCAM" : "clean"}`,
+        d.messageId ?? "Message scan",
+        bad ? "NLP flagged inbound SMS as scam" : "Classified clean",
         bad ? "bad" : "ok",
       );
     });
@@ -115,18 +128,15 @@ export default function AdminPage() {
       const tripped = d.state === "tripped" || d.state === undefined;
       push(
         setDecoyFeed,
-        `${d.field_type ? d.field_type + " " : ""}${d.account ?? "decoy"} → ${tripped ? "TRIPPED" : "armed"}`,
-        tripped ? "bad" : "ok",
+        tripped ? "Decoy account accessed" : "Decoy field armed",
+        `${d.field_type ? d.field_type + " · " : ""}${d.account ?? "decoy"} · session ${
+          tripped ? "frozen" : "armed"
+        }`,
+        tripped ? "critical" : "ok",
       );
       if (tripped && d.field_type) {
         setTrippedTypes((prev) => new Set(prev).add(d.field_type!));
       }
-    });
-
-    // risk-level-change → Fused Risk Level (only fires on a real transition)
-    const offRisk = onEvent(socket, EVENTS.riskLevel, (p) => {
-      const d = (p ?? {}) as { level?: string; reasons?: string[] };
-      setRisk({ level: (d.level ?? "LOW").toLowerCase(), reasons: d.reasons ?? [] });
     });
 
     return () => {
@@ -135,59 +145,170 @@ export default function AdminPage() {
       offTrust();
       offScan();
       offDecoy();
-      offRisk();
     };
   }, []);
 
+  const allEvents = [...trustFeed, ...scanFeed, ...decoyFeed].sort((a, b) => b.ts - a.ts);
+  const counts = {
+    active: trustFeed.length + scanFeed.length + decoyFeed.length,
+    low: allEvents.filter((e) => e.tone === "ok").length,
+    medium: allEvents.filter((e) => e.tone === "warn").length,
+    high: allEvents.filter((e) => e.tone === "bad").length,
+    critical: allEvents.filter((e) => e.tone === "critical").length,
+  };
+
   return (
-    <main className="mx-auto max-w-6xl px-6 py-10">
-      <div className="flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 pb-6">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight text-slate-900">Judge Dashboard</h1>
-          <p className="mt-0.5 text-base text-slate-500">SentinelIQ · live security operations feed</p>
+    <div className="min-h-screen bg-u360-navy font-sans text-white">
+      <div className="mx-auto max-w-6xl px-8 pb-8 pt-7">
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <div className="flex items-center gap-2.5">
+            <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-u360-blue text-sm text-u360-navy">
+              🛡
+            </span>
+            <span className="font-heading text-[17px] font-extrabold text-white">
+              SentinelIQ
+              <span className="ml-2 text-xs font-semibold text-u360-admin-accent">ADMIN</span>
+            </span>
+          </div>
+
+          <div className="flex items-center gap-4">
+            <label className="flex items-center gap-2 text-xs text-u360-admin-accent">
+              <span className="hidden sm:inline">Alert language</span>
+              <select
+                value={alertLevel ?? "auto"}
+                onChange={(e) => setAlertLevel(e.target.value === "auto" ? null : e.target.value)}
+                className="rounded-lg border border-white/15 bg-white/5 px-2.5 py-1.5 text-xs text-white outline-none focus:border-u360-blue"
+              >
+                {LANG_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value} className="text-u360-navy">
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <span className="text-xs text-u360-admin-accent">
+              System health ·{" "}
+              <span style={{ color: connected ? "#3DE58C" : "#8FA9BE" }}>●</span>{" "}
+              {connected ? "Operational" : "Connecting…"}
+            </span>
+          </div>
         </div>
 
-        <div className="flex items-center gap-3">
-          {/* Demographic alert language toggle — affects all future alerts this session. */}
-          <label className="flex items-center gap-2 text-sm text-slate-500">
-            <span className="hidden sm:inline">Alert language</span>
-            <select
-              value={alertLevel ?? "auto"}
-              onChange={(e) => setAlertLevel(e.target.value === "auto" ? null : e.target.value)}
-              className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-800 outline-none focus:border-ubblue"
-            >
-              {LANG_OPTIONS.map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
-            </select>
-          </label>
-
-          <span
-            className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm ${
-              connected
-                ? "border-emerald-300 bg-emerald-50 text-emerald-700"
-                : "border-slate-300 text-slate-500"
-            }`}
-          >
-            <span
-              className={`h-2.5 w-2.5 rounded-full ${connected ? "animate-pulse bg-emerald-400" : "bg-slate-600"}`}
-            />
-            {connected ? "Live" : "Connecting…"}
-          </span>
+        {/* Stat tile row */}
+        <div className="mt-5 flex flex-wrap gap-4">
+          <StatTile value={counts.active} label="Active sessions" bg="rgba(255,255,255,0.06)" />
+          <StatTile value={counts.low} label="Low" bg={TONE_STYLES.ok.bg} color={TONE_STYLES.ok.text} />
+          <StatTile
+            value={counts.medium}
+            label="Medium"
+            bg={TONE_STYLES.warn.bg}
+            color={TONE_STYLES.warn.text}
+          />
+          <StatTile value={counts.high} label="High" bg={TONE_STYLES.bad.bg} color={TONE_STYLES.bad.text} />
+          <StatTile
+            value={counts.critical}
+            label="Critical"
+            bg={TONE_STYLES.critical.bg}
+            color={TONE_STYLES.critical.text}
+          />
         </div>
-      </div>
 
-      <div className="mt-8 grid gap-5 lg:grid-cols-2">
-        <FeedPanel title="Trust Score Feed" hint="Live per-user trust scores" items={trustFeed} />
-        <FeedPanel title="Message Scan Log" hint="NLP scam-classification events" items={scanFeed} />
-        <FeedPanel title="Decoy Status" hint="Honeytoken access events" items={decoyFeed} />
-        <RiskPanel risk={risk} />
-      </div>
+        {/* Live feeds */}
+        <div className="mt-5 flex flex-wrap items-start gap-5">
+          <Panel title="Live risk event feed" className="flex-[1.4] min-w-[320px]">
+            {allEvents.length === 0 ? (
+              <EmptyRow>Waiting for events…</EmptyRow>
+            ) : (
+              allEvents
+                .slice(0, MAX_ROWS)
+                .map((e, i) => <EventRow key={e.id} item={e} isLast={i === Math.min(allEvents.length, MAX_ROWS) - 1} />)
+            )}
+          </Panel>
 
-      <DecoyMap map={fieldMap} tripped={trippedTypes} error={mapError} />
-    </main>
+          <Panel title="Honeytoken trigger log" className="flex-1 min-w-[260px]">
+            {decoyFeed.length === 0 ? (
+              <EmptyRow>Waiting for events…</EmptyRow>
+            ) : (
+              decoyFeed.map((d, i) => (
+                <div
+                  key={d.id}
+                  className={`px-[18px] py-[14px] text-[12.5px] leading-relaxed text-[#D7E4EC] ${
+                    i < decoyFeed.length - 1 ? "border-b border-white/[0.06]" : ""
+                  }`}
+                >
+                  {new Date(d.ts).toLocaleTimeString()} · {d.primary} · {d.secondary.split(" · ").pop()}
+                </div>
+              ))
+            )}
+          </Panel>
+        </div>
+
+        <DecoyMap map={fieldMap} tripped={trippedTypes} error={mapError} />
+      </div>
+    </div>
+  );
+}
+
+function StatTile({
+  value,
+  label,
+  bg,
+  color,
+}: {
+  value: number;
+  label: string;
+  bg: string;
+  color?: string;
+}) {
+  return (
+    <div className="flex-1 min-w-[110px] rounded-2xl p-4" style={{ background: bg }}>
+      <div className="font-heading text-[22px] font-extrabold" style={{ color: color ?? "#fff" }}>
+        {value}
+      </div>
+      <div className="mt-0.5 text-[11.5px] text-u360-admin-muted">{label}</div>
+    </div>
+  );
+}
+
+function Panel({
+  title,
+  className = "",
+  children,
+}: {
+  title: string;
+  className?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className={`rounded-2xl bg-white/[0.04] overflow-hidden ${className}`}>
+      <div className="border-b border-white/[0.08] px-[18px] py-[14px] text-xs font-bold uppercase tracking-wide text-u360-admin-muted">
+        {title}
+      </div>
+      {children}
+    </section>
+  );
+}
+
+function EmptyRow({ children }: { children: React.ReactNode }) {
+  return <div className="px-[18px] py-8 text-center text-sm text-u360-admin-muted">{children}</div>;
+}
+
+function EventRow({ item, isLast }: { item: FeedItem; isLast: boolean }) {
+  const tone = TONE_STYLES[item.tone];
+  return (
+    <div
+      className={`flex items-center justify-between px-[18px] py-[14px] ${
+        isLast ? "" : "border-b border-white/[0.06]"
+      }`}
+    >
+      <div>
+        <div className="text-[13.5px] font-semibold text-white">{item.primary}</div>
+        <div className="mt-0.5 text-[11.5px] text-u360-admin-muted">{item.secondary}</div>
+      </div>
+      <div className="text-[11.5px] font-extrabold uppercase" style={{ color: tone.text }}>
+        {tone.label}
+      </div>
+    </div>
   );
 }
 
@@ -203,38 +324,39 @@ function DecoyMap({
   error: string | null;
 }) {
   return (
-    <section className="mt-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+    <section className="mt-5 rounded-2xl bg-white/[0.04] p-5">
       <div className="flex items-baseline justify-between">
-        <h2 className="font-semibold text-slate-900">Decoy Map</h2>
-        <span className="text-xs text-slate-400">shadow fields live outside the user surface</span>
+        <h2 className="font-heading text-sm font-bold text-white">Decoy Map</h2>
+        <span className="text-xs text-u360-admin-muted">shadow fields live outside the user surface</span>
       </div>
 
       {!map && error && (
-        <p className="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-500">
-          {error}
-        </p>
+        <p className="mt-4 rounded-lg bg-white/5 p-3 text-sm text-u360-admin-muted">{error}</p>
       )}
 
       <div className="mt-4 grid gap-4 md:grid-cols-2">
         {/* Real layer */}
-        <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-4">
-          <p className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-emerald-700">
-            <span className="h-2 w-2 rounded-full bg-emerald-500" /> Real fields · served to the app
+        <div className="rounded-xl p-4" style={{ background: "rgba(46,156,90,0.1)" }}>
+          <p className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide" style={{ color: "#3DE58C" }}>
+            <span className="h-2 w-2 rounded-full" style={{ background: "#3DE58C" }} /> Real fields · served to the app
           </p>
           <dl className="space-y-2 text-sm">
             {(map?.real ?? []).map((f) => (
               <div key={f.label} className="flex justify-between gap-4">
-                <dt className="text-slate-500">{f.label}</dt>
-                <dd className="font-mono text-slate-800">{f.value}</dd>
+                <dt className="text-u360-admin-muted">{f.label}</dt>
+                <dd className="font-mono text-white">{f.value}</dd>
               </div>
             ))}
-            {!map && !error && <p className="text-sm text-slate-400">Loading…</p>}
+            {!map && !error && <p className="text-sm text-u360-admin-muted">Loading…</p>}
           </dl>
         </div>
 
         {/* Shadow / decoy layer — visually distinct: dashed, amber, "ghost" */}
-        <div className="rounded-xl border border-dashed border-amber-400 bg-amber-50 p-4">
-          <p className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-amber-700">
+        <div
+          className="rounded-xl border border-dashed p-4"
+          style={{ background: "rgba(201,138,46,0.1)", borderColor: "#E0A94B" }}
+        >
+          <p className="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wide" style={{ color: "#E0A94B" }}>
             <span aria-hidden>👻</span> Decoy shadow fields · never shown to users
           </p>
           <ul className="space-y-2 text-sm">
@@ -243,113 +365,39 @@ function DecoyMap({
               return (
                 <li
                   key={d.id}
-                  className={`flex items-center justify-between gap-4 rounded-lg px-2 py-1.5 ${
-                    hot ? "bg-red-100 ring-1 ring-red-300" : ""
-                  }`}
+                  className="flex items-center justify-between gap-4 rounded-lg px-2 py-1.5"
+                  style={hot ? { background: "rgba(166,51,51,0.18)" } : undefined}
                 >
-                  <span className="text-slate-500">{d.field_type}</span>
-                  <span className="font-mono text-slate-700">{d.value_masked}</span>
+                  <span className="text-u360-admin-muted">{d.field_type}</span>
+                  <span className="font-mono text-white">{d.value_masked}</span>
                   {hot ? (
-                    <span className="rounded-full bg-red-200 px-2 py-0.5 text-xs font-semibold text-red-700">
+                    <span
+                      className="rounded-full px-2 py-0.5 text-xs font-semibold"
+                      style={{ background: "rgba(166,51,51,0.3)", color: "#E8605F" }}
+                    >
                       TRIPPED{d.trips > 0 ? ` ×${d.trips}` : ""}
                     </span>
                   ) : (
-                    <span className="rounded-full bg-amber-200 px-2 py-0.5 text-xs text-amber-800">
+                    <span
+                      className="rounded-full px-2 py-0.5 text-xs"
+                      style={{ background: "rgba(201,138,46,0.2)", color: "#E0A94B" }}
+                    >
                       armed
                     </span>
                   )}
                 </li>
               );
             })}
-            {!map && !error && <p className="text-sm text-slate-400">Loading…</p>}
+            {!map && !error && <p className="text-sm text-u360-admin-muted">Loading…</p>}
           </ul>
         </div>
       </div>
 
-      <p className="mt-4 rounded-lg bg-slate-100 p-3 text-xs text-slate-500">
+      <p className="mt-4 rounded-lg bg-white/5 p-3 text-xs text-u360-admin-muted">
         Decoys are stored in a separate table and never appear in the user UI or any
         legitimate API response. They only exist in the layer a breach would reach —
         so any touch of a shadow field is, by definition, an intrusion.
       </p>
-    </section>
-  );
-}
-
-function toneClass(tone: FeedItem["tone"]) {
-  return tone === "bad"
-    ? "text-red-600"
-    : tone === "warn"
-      ? "text-amber-600"
-      : "text-emerald-600";
-}
-
-function FeedPanel({
-  title,
-  hint,
-  items,
-}: {
-  title: string;
-  hint: string;
-  items: FeedItem[];
-}) {
-  return (
-    <section className="flex min-h-56 flex-col rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
-      <div className="flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-slate-900">{title}</h2>
-        <span
-          className={`h-2.5 w-2.5 rounded-full ${items.length ? "bg-ubblue" : "bg-slate-300"}`}
-          aria-hidden
-        />
-      </div>
-      <p className="text-sm text-slate-500">{hint}</p>
-
-      {items.length === 0 ? (
-        <div className="mt-4 flex flex-1 items-center justify-center rounded-lg border border-dashed border-slate-300 text-base text-slate-400">
-          Waiting for events…
-        </div>
-      ) : (
-        <ul className="mt-3 space-y-1.5 font-mono text-sm">
-          {items.map((it) => (
-            <li key={it.id} className="flex justify-between gap-3">
-              <span className={toneClass(it.tone)}>{it.text}</span>
-              <span className="shrink-0 text-slate-400">
-                {new Date(it.ts).toLocaleTimeString()}
-              </span>
-            </li>
-          ))}
-        </ul>
-      )}
-    </section>
-  );
-}
-
-function RiskPanel({ risk }: { risk: { level: string; reasons: string[] } | null }) {
-  const level = risk?.level ?? "—";
-  const color =
-    level === "critical"
-      ? "from-red-700 to-rose-950 border-red-400/70 animate-pulse"
-      : level === "high"
-        ? "from-red-600 to-red-800 border-red-500/50"
-        : level === "medium"
-          ? "from-amber-600 to-amber-800 border-amber-500/50"
-          : level === "low"
-            ? "from-emerald-600 to-emerald-800 border-emerald-500/50"
-            : "from-slate-400 to-slate-500 border-slate-300";
-
-  return (
-    <section
-      className={`flex min-h-56 flex-col rounded-2xl border bg-gradient-to-br ${color} p-6`}
-    >
-      <h2 className="text-lg font-semibold text-white">Fused Risk Level</h2>
-      <p className="text-sm text-white/70">Aggregate risk across signals</p>
-      <div className="mt-4 flex flex-1 flex-col items-center justify-center text-center">
-        <span className="text-6xl font-black uppercase tracking-tight text-white drop-shadow">
-          {level}
-        </span>
-        {risk && risk.reasons.length > 0 && (
-          <span className="mt-2 text-sm text-white/90">{risk.reasons.join(" · ")}</span>
-        )}
-      </div>
     </section>
   );
 }

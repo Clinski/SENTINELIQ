@@ -14,8 +14,9 @@ function luhnCardNumber() {
   return faker.finance.creditCardNumber().replace(/\D/g, "");
 }
 
-// Realistic Nigerian recipients + banks so the transaction history reads like a
-// real account statement (names, bank, masked account) rather than raw UUIDs.
+// Realistic Nigerian recipients so the transaction history reads like a real
+// account statement (names, bank, masked account) rather than raw UUIDs. All
+// recipients bank with Union Bank of Nigeria, same as Adaeze.
 const NG_NAMES = [
   "Chinedu Okafor",
   "Aisha Bello",
@@ -26,15 +27,7 @@ const NG_NAMES = [
   "Tunde Bakare",
   "Amina Yusuf",
 ];
-const NG_BANKS = [
-  "Guaranty Trust Bank",
-  "Access Bank",
-  "Zenith Bank",
-  "First Bank of Nigeria",
-  "United Bank for Africa",
-  "Kuda Microfinance Bank",
-  "Opay",
-];
+const RECIPIENT_BANK = "Union Bank of Nigeria";
 
 // Local Luhn validator so we can assert the phantom card is well-formed.
 function isLuhnValid(num) {
@@ -67,7 +60,6 @@ async function seedDatabase(c) {
     const recipientIds = [];
     for (let i = 0; i < 5; i++) {
       const name = NG_NAMES[i % NG_NAMES.length];
-      const bank = NG_BANKS[i % NG_BANKS.length];
       const email = faker.internet.email({ firstName: name.split(" ")[0] }).toLowerCase();
       const { rows } = await c.query(
         `INSERT INTO users (name, email, tech_literacy_level, usual_location, avg_transaction)
@@ -79,7 +71,12 @@ async function seedDatabase(c) {
       await c.query(
         `INSERT INTO accounts (user_id, balance, account_number, bank_name)
          VALUES ($1, $2, $3, $4)`,
-        [recipientId, faker.number.int({ min: 5000, max: 900000 }), "0" + faker.string.numeric(9), bank],
+        [
+          recipientId,
+          faker.number.int({ min: 5000, max: 900000 }),
+          "0" + faker.string.numeric(9),
+          RECIPIENT_BANK,
+        ],
       );
     }
 
@@ -127,6 +124,13 @@ async function seedDatabase(c) {
         ],
       );
     }
+
+    // --- A recurring bill auto-debit (no recipient_id — a merchant, not a user) --
+    await c.query(
+      `INSERT INTO transactions (from_account, amount, recipient_id, timestamp, status, description)
+       VALUES ($1, $2, NULL, $3, 'completed', $4)`,
+      [accountId, -24500, faker.date.recent({ days: 14 }), "DSTV Subscription"],
+    );
 
     // --- 3 decoy fields (all is_decoy = true) --------------------------------
     const card = luhnCardNumber();

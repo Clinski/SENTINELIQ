@@ -228,7 +228,7 @@ app.get("/api/transactions/recent", requireAuth, async (req, res) => {
   // the statement reads naturally. LEFT JOINs keep rows even if a recipient (or
   // their account) is missing.
   const { rows } = await pool.query(
-    `SELECT t.id, t.amount, t.recipient_id, t.timestamp, t.status,
+    `SELECT t.id, t.amount, t.recipient_id, t.timestamp, t.status, t.description,
             ru.name                         AS recipient_name,
             ra.bank_name                    AS recipient_bank,
             RIGHT(ra.account_number, 4)     AS recipient_account_last4

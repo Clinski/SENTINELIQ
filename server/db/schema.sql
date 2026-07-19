@@ -109,3 +109,8 @@ ALTER TABLE accounts ADD COLUMN IF NOT EXISTS bank_name TEXT;
 ALTER TABLE trust_events DROP CONSTRAINT IF EXISTS trust_events_action_taken_check;
 ALTER TABLE trust_events ADD CONSTRAINT trust_events_action_taken_check
   CHECK (action_taken IN ('none', 'soft_step_up', 'hard_step_up', 'block', 'breach_alert'));
+
+-- Merchant/bill-payment label for transactions with no recipient_id (e.g. a DSTV
+-- subscription auto-debit) so the statement can show something other than a
+-- blank recipient.
+ALTER TABLE transactions ADD COLUMN IF NOT EXISTS description TEXT;

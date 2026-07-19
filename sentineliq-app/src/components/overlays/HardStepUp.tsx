@@ -1,8 +1,10 @@
 "use client";
 
-// Hard Step-Up: action-bound OTP challenge. Shows the personalised OTP message
-// ("OTP - 654231 to authorize your transfer of ₦X to Y…") plus a "Why am I seeing
-// this?" breakdown, and verifies the code against the backend.
+// Hard Step-Up — matches the SentinelIQ redesign reference: a white card rising
+// over a dimmed background, SentinelIQ shield badge + HIGH RISK tag, "Why am I
+// seeing this?" breakdown. Low trust-score transfers require Face ID/fingerprint
+// confirmation, not an OTP — biometric auth happens on-device, so there is no
+// server round-trip here (mirrors how SoftStepUp confirms locally).
 
 import { useState } from "react";
 import type { OverlayProps } from "./SoftStepUp";
@@ -26,126 +28,104 @@ interface HardStepUpProps extends OverlayProps {
   explanation?: string;
   /** Signal keys from the trust-score API response. */
   signals?: string[];
-  /** Personalised, action-bound OTP message from /api/otp/send. */
-  otpMessage?: string;
-  /** Verify the entered code. Resolves ok/false with an optional error. */
-  onVerify?: (code: string) => Promise<{ ok: boolean; error?: string }>;
-  /** Called on successful verification. */
+  /** Called once Face ID/fingerprint confirmation succeeds. */
   onVerified?: () => void;
 }
 
 export default function HardStepUp({
   open,
   onClose,
-  onVerify,
   onVerified,
-  otpMessage,
   explanation,
   signals,
   level,
 }: HardStepUpProps) {
-  const [code, setCode] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [verifying, setVerifying] = useState(false);
+  const [confirming, setConfirming] = useState(false);
 
   if (!open) return null;
 
   const labels = (signals ?? []).map((s) => SIGNAL_LABELS[s] || s.replace(/_/g, " "));
 
-  async function submit() {
-    setError(null);
-    if (!onVerify) {
+  function confirm() {
+    setConfirming(true);
+    // Biometric auth is verified by the device's OS, not the bank server —
+    // simulate that on-device check, then hand off to the caller.
+    setTimeout(() => {
+      setConfirming(false);
       onVerified?.();
-      return;
-    }
-    setVerifying(true);
-    try {
-      const res = await onVerify(code);
-      if (res.ok) {
-        setCode("");
-        onVerified?.();
-      } else {
-        setError(res.error || "Incorrect code.");
-      }
-    } finally {
-      setVerifying(false);
-    }
+    }, 700);
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 p-4 backdrop-blur-sm">
-      <div className="w-full max-w-md rounded-2xl border border-amber-500/40 bg-white p-6 shadow-xl">
-        <div className="flex items-center gap-3">
-          <span className="text-2xl" aria-hidden>
-            ⚠️
+    <div className="fixed inset-0 z-50">
+      <div className="absolute inset-0 bg-u360-navy/40" onClick={onClose} />
+      <div className="absolute inset-x-0 bottom-0 max-h-[90vh] overflow-y-auto rounded-t-3xl bg-white px-6 pb-9 pt-5 shadow-[0_-8px_30px_rgba(0,0,0,0.18)]">
+        <div className="mx-auto mb-4 h-1 w-9 rounded-full bg-slate-200" />
+
+        <div className="flex items-center gap-2">
+          <span className="flex h-[22px] w-[22px] items-center justify-center rounded-md bg-u360-navy text-xs text-white">
+            🛡
           </span>
-          <h2 className="text-lg font-semibold text-slate-900">Extra verification needed</h2>
+          <span className="font-heading text-xs font-extrabold tracking-wide text-u360-navy">
+            SentinelIQ
+          </span>
+          <span
+            className="ml-auto rounded-full px-2.5 py-1 text-[10.5px] font-extrabold tracking-wide"
+            style={{ background: "#F6D9C8", color: "#C1592E" }}
+          >
+            HIGH RISK
+          </span>
         </div>
 
-        <p className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-800">
+        <p className="mt-3.5 text-[13px] leading-relaxed text-[#33475A]">
           {alertText("hard_step_up", level)}
         </p>
 
-        {/* Personalised, action-bound OTP message (as it would arrive by SMS). */}
-        {otpMessage && (
-          <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 p-3">
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
-              Message from Union Bank
-            </p>
-            <p className="mt-1 text-sm text-slate-700">{otpMessage}</p>
-          </div>
-        )}
-
         {/* Why am I seeing this? — the exact signals that tripped the step-up. */}
         {labels.length > 0 && (
-          <div className="mt-4 rounded-lg border border-slate-200 bg-white p-3">
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+          <div className="mt-3 rounded-lg border border-u360 bg-white p-3">
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-u360-muted-2">
               Why am I seeing this?
             </p>
             <ul className="mt-2 flex flex-wrap gap-1.5">
               {labels.map((label) => (
                 <li
                   key={label}
-                  className="rounded-full border border-amber-300 bg-amber-50 px-2.5 py-1 text-xs text-amber-800"
+                  className="rounded-full px-2.5 py-1 text-xs"
+                  style={{ background: "#F6D9C8", color: "#C1592E" }}
                 >
                   {label}
                 </li>
               ))}
             </ul>
-            {explanation && <p className="mt-2 text-xs text-slate-500">{explanation}</p>}
+            {explanation && <p className="mt-2 text-xs text-u360-muted-2">{explanation}</p>}
           </div>
         )}
 
-        <label htmlFor="otp-code" className="mt-5 block text-sm font-medium text-slate-700">
-          One-time code
-        </label>
-        <input
-          id="otp-code"
-          inputMode="numeric"
-          maxLength={6}
-          value={code}
-          onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
-          placeholder="••••••"
-          className="mt-2 w-full rounded-lg border border-slate-300 bg-white px-4 py-3 text-center text-lg tracking-[0.5em] text-slate-900 outline-none focus:border-ubblue"
-        />
+        <div className="mt-3.5 flex flex-col items-center rounded-xl bg-u360-page p-5">
+          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-u360-blue/15 text-3xl">
+            🆔
+          </div>
+          <p className="mt-2.5 text-center text-xs leading-snug text-u360-muted">
+            Confirm with Face ID or fingerprint to approve this transfer
+          </p>
+        </div>
 
-        {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
-
-        <div className="mt-6 flex flex-col gap-2">
-          <button
-            type="button"
-            onClick={submit}
-            disabled={verifying || code.length < 6}
-            className="rounded-lg bg-ubblue px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-ubblue-deep disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {verifying ? "Verifying…" : "Verify & continue"}
-          </button>
+        <div className="mt-4 flex gap-2.5">
           <button
             type="button"
             onClick={onClose}
-            className="rounded-lg px-4 py-2 text-sm text-slate-500 transition-colors hover:text-slate-800"
+            className="flex-1 rounded-[22px] border border-u360-border-2 py-[13px] text-[13.5px] font-bold text-[#33475A] transition-colors hover:bg-u360-page"
           >
-            Cancel transfer
+            Cancel Transfer
+          </button>
+          <button
+            type="button"
+            onClick={confirm}
+            disabled={confirming}
+            className="flex-1 rounded-[22px] bg-u360-blue py-[13px] text-[13.5px] font-bold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {confirming ? "Confirming…" : "Confirm with Face ID"}
           </button>
         </div>
       </div>
