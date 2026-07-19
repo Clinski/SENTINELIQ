@@ -9,7 +9,11 @@ import { useEffect, useState } from "react";
 import { getOtpInbox } from "@/lib/api";
 import { MESSAGES, type Message } from "@/lib/placeholderData";
 
-export function useInbox(token?: string | null): Message[] {
+// `refreshKey` lets a caller force a refetch without remounting — the drawer
+// stays mounted the whole time its parent step-up overlay is open (only its
+// visibility toggles), so it passes its own `open` state here to refetch every
+// time it's actually opened, catching an OTP that landed after first mount.
+export function useInbox(token?: string | null, refreshKey: unknown = token): Message[] {
   const [inbox, setInbox] = useState<Message[]>(MESSAGES);
 
   useEffect(() => {
@@ -26,7 +30,7 @@ export function useInbox(token?: string | null): Message[] {
         });
       })
       .catch(() => {}); // best-effort — a failed fetch just means no OTPs shown yet
-  }, [token]);
+  }, [token, refreshKey]);
 
   return inbox;
 }

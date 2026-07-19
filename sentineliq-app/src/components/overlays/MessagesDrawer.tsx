@@ -14,7 +14,10 @@ interface MessagesDrawerProps {
 }
 
 export default function MessagesDrawer({ open, onClose, token }: MessagesDrawerProps) {
-  const inbox = useInbox(token);
+  // Refetch every time the drawer opens — it stays mounted behind the step-up
+  // overlay the whole time, so a plain mount-only fetch would miss an OTP that
+  // arrived after the drawer's first render.
+  const inbox = useInbox(token, open);
 
   return (
     <div

@@ -25,7 +25,7 @@ const { makeDecoyGuard } = require("./lib/decoyGuard");
 const { seedDatabase } = require("./db/seed");
 const { scheduleDecoyRotation } = require("./lib/decoyRotation");
 const { fallbackClassify } = require("./lib/nlpFallback");
-const { generateOtp, verifyOtp } = require("./lib/otp");
+const { generateOtp, verifyOtp, TTL_MS: OTP_TTL_MS } = require("./lib/otp");
 const { deliver: deliverSms, inbox: smsInbox } = require("./lib/smsInbox");
 
 // API action ("hard-step-up") → trust_events.action_taken enum ("hard_step_up").
@@ -205,7 +205,7 @@ app.post("/api/otp/send", requireAuth, (req, res) => {
   const { purpose = "transfer", amount, recipient } = req.body ?? {};
   const rec = generateOtp(req.auth.sub, purpose, { amount, recipient });
   deliverSms(req.auth.sub, rec.message);
-  res.json({ message: rec.message, purpose: rec.purpose, expires_in: 300 });
+  res.json({ message: rec.message, purpose: rec.purpose, expires_in: OTP_TTL_MS / 1000 });
 });
 
 // POST /api/otp/verify — check the caller's OTP (single-use, action-bound).

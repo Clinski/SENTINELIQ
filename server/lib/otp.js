@@ -9,7 +9,7 @@
 // be delivered by SMS, never returned in an API response.
 
 const store = new Map(); // userId -> { code, purpose, message, expiresAt }
-const TTL_MS = 5 * 60 * 1000;
+const TTL_MS = 60 * 1000;
 
 function naira(amount) {
   const n = Number(amount);
@@ -58,4 +58,4 @@ function verifyOtp(userId, code) {
   return { ok: true, purpose: rec.purpose };
 }
 
-module.exports = { generateOtp, verifyOtp, purposeText };
+module.exports = { generateOtp, verifyOtp, purposeText, TTL_MS };
