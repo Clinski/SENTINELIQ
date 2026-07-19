@@ -7,8 +7,9 @@ import { useAuth } from "@/lib/AuthContext";
 import { scoreTransfer } from "@/lib/api";
 import SoftStepUp from "@/components/overlays/SoftStepUp";
 import HardStepUp from "@/components/overlays/HardStepUp";
+import LivenessCheck from "@/components/overlays/LivenessCheck";
 
-type Overlay = "soft" | "hard" | null;
+type Overlay = "soft" | "hard" | "liveness" | null;
 type Scenario =
   | "normal"
   | "unusual"
@@ -62,6 +63,7 @@ export default function SendMoneyPage() {
   const [signals, setSignals] = useState<string[]>([]);
   const [status, setStatus] = useState<string | null>(null);
   const [blocked, setBlocked] = useState<string | null>(null);
+  const [livenessKey, setLivenessKey] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -93,10 +95,12 @@ export default function SendMoneyPage() {
 
       // Honor the backend's action decision directly (falls back to score bands).
       // proceed → silent · soft-step-up → Soft overlay (biometric) · hard-step-up →
-      // Hard overlay (biometric, higher friction) · block → denied outright, no
-      // step-up offered. Both step-ups confirm via Face ID/fingerprint, verified
-      // on-device — never an OTP over SMS. (A decoy recipient additionally trips
-      // the global breach alert via socket.)
+      // Hard overlay (facial verification, higher friction) · block → a
+      // last-resort liveness check (move your head, open your mouth) instead of a
+      // dead end; only denied outright if the user cancels that. The hard
+      // step-up + the liveness check both confirm via facial verification,
+      // matched on-device against the account holder — never an OTP over SMS.
+      // (A decoy recipient additionally trips the global breach alert via socket.)
       const action =
         result.action ??
         (result.score >= 80
@@ -112,8 +116,8 @@ export default function SendMoneyPage() {
       } else if (action === "soft-step-up") {
         setOverlay("soft");
       } else if (action === "block") {
-        setOverlay(null);
-        setBlocked(result.explanation || `Transfer blocked · trust score ${result.score}/100`);
+        setLivenessKey((k) => k + 1);
+        setOverlay("liveness");
       } else {
         setOverlay("hard");
       }
@@ -128,6 +132,19 @@ export default function SendMoneyPage() {
   function completeAfterStepUp() {
     setOverlay(null);
     setStatus(`Transfer approved after verification · trust score ${score}/100`);
+  }
+
+  // Liveness check passed — this was the last-resort path for an otherwise
+  // blocked transfer, so it gets its own status message.
+  function completeAfterLiveness() {
+    setOverlay(null);
+    setStatus(`Transfer approved after identity verification · trust score ${score}/100`);
+  }
+
+  // User backed out of the liveness check — now it's actually denied.
+  function cancelLiveness() {
+    setOverlay(null);
+    setBlocked(explanation || `Transfer blocked · trust score ${score}/100`);
   }
 
   return (
@@ -252,6 +269,13 @@ export default function SendMoneyPage() {
         onVerified={completeAfterStepUp}
         explanation={explanation}
         signals={signals}
+        level={effectiveLevel}
+      />
+      <LivenessCheck
+        key={livenessKey}
+        open={overlay === "liveness"}
+        onClose={cancelLiveness}
+        onVerified={completeAfterLiveness}
         level={effectiveLevel}
       />
     </main>

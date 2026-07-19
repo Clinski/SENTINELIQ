@@ -2,9 +2,10 @@
 
 // Hard Step-Up — matches the SentinelIQ redesign reference: a white card rising
 // over a dimmed background, SentinelIQ shield badge + HIGH RISK tag, "Why am I
-// seeing this?" breakdown. Low trust-score transfers require Face ID/fingerprint
-// confirmation, not an OTP — biometric auth happens on-device, so there is no
-// server round-trip here (mirrors how SoftStepUp confirms locally).
+// seeing this?" breakdown. Low trust-score transfers require facial verification
+// (confirming the same face as the account holder), not an OTP — the check
+// happens on-device, so there is no server round-trip here (mirrors how
+// SoftStepUp confirms locally).
 
 import { useState } from "react";
 import type { OverlayProps } from "./SoftStepUp";
@@ -28,7 +29,7 @@ interface HardStepUpProps extends OverlayProps {
   explanation?: string;
   /** Signal keys from the trust-score API response. */
   signals?: string[];
-  /** Called once Face ID/fingerprint confirmation succeeds. */
+  /** Called once facial verification confirms the account holder's identity. */
   onVerified?: () => void;
 }
 
@@ -104,10 +105,10 @@ export default function HardStepUp({
 
         <div className="mt-3.5 flex flex-col items-center rounded-xl bg-u360-page p-5">
           <div className="flex h-14 w-14 items-center justify-center rounded-full bg-u360-blue/15 text-3xl">
-            🆔
+            🙂
           </div>
           <p className="mt-2.5 text-center text-xs leading-snug text-u360-muted">
-            Confirm with Face ID or fingerprint to approve this transfer
+            Run a quick facial scan to confirm it&apos;s really you before this goes through
           </p>
         </div>
 
@@ -125,7 +126,7 @@ export default function HardStepUp({
             disabled={confirming}
             className="flex-1 rounded-[22px] bg-u360-blue py-[13px] text-[13.5px] font-bold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {confirming ? "Confirming…" : "Confirm with Face ID"}
+            {confirming ? "Verifying…" : "Verify My Face"}
           </button>
         </div>
       </div>

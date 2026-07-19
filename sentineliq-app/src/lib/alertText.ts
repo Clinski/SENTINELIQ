@@ -38,11 +38,11 @@ export const ALERT_TEXTS: Record<AlertType, Record<Variant, string>> = {
 
   // (3) Trust score hard step-up
   hard_step_up: {
-    tech: "High-risk transaction — multiple trust signals failed. Face ID or fingerprint verification required before it can proceed.",
+    tech: "High-risk transaction — multiple trust signals failed. Facial verification required to confirm it's really you before it can proceed.",
     standard:
-      "This transfer looks unusual, so we've paused it. Confirm with Face ID or your fingerprint to continue.",
+      "This transfer looks unusual, so we've paused it. Run a quick facial scan to confirm it's really you and continue.",
     elderly:
-      "We stopped this transfer to keep your money safe. Please use your fingerprint or face to confirm it's really you. If you did NOT start this transfer, do not confirm — cancel it and call your bank.",
+      "We stopped this transfer to keep your money safe. Please look at your camera so we can confirm it's really you. If you did NOT start this transfer, do not confirm — cancel it and call your bank.",
   },
 
   // (4) Decoy breach detected

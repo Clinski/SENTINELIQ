@@ -204,7 +204,7 @@ function buildExplanation(signals, action) {
   else list = `${phrases.slice(0, -1).join(", ")}, and ${phrases[phrases.length - 1]}`;
 
   if (action === "block") {
-    return `We stopped this transfer because it's coming from ${list} — too many red flags to proceed safely. Contact your bank if this was really you.`;
+    return `This transfer's been paused — it's coming from ${list}. Verify it's you to continue.`;
   }
   return `We noticed this transfer is coming from ${list}. For your safety we've asked for extra verification before it can continue.`;
 }
